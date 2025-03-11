@@ -12,7 +12,9 @@ servers:
 
 tags:
   - name: "Instant Issuing"
-    description: "Operations related to Group Request."
+    description: "Instant Issuing Operations"
+  - name: "Cards"
+    description: "Cards Operations"
 
 paths:
   /instantissuing:
@@ -33,6 +35,11 @@ paths:
         - **For existing customers:** `"2-NewAccountExistingCustomer"`
 
         By correctly setting `RequestType` and including all required fields, you ensure that the API can create the account successfully without validation errors.
+      
+      parameters:
+        - $ref: '#/components/parameters/apiKey'
+        - $ref: '#/components/parameters/contentType'
+
       tags:
         - Instant Issuing
       operationId: processGroupRequest
@@ -58,19 +65,547 @@ paths:
               EmbossedName: "Cust02 New"
       responses:
         "200":
-          description: "Request Processed Successfully."
-          # content:
-          #   application/json:
-          #     schema:
-          #       $ref: "#/components/schemas/Customer"
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message:
+                    type: string
+                    description: "Request: 'NewAccountNewCustomer' Processed Successfully."
+              examples:
+                successResponse:
+                  summary: Successful Request Example
+                  value:
+                    message: "Request: 'NewAccountNewCustomer' Processed Successfully."
         "400":
-          description: "Bad Request - Missing mandatory fields or invalid values."
-        "404":
-          description: "Not Found - Required subject not found."
-        "409":
-          description: "Conflict - Subject already exists."
+          description: Bad request response "Wrong Field in the body request"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage  # Making errorMessage required at the root level
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        description: "Bad Request: Invalid Request Body"
+                        type: string
+                      statusCode:
+                        description: "400"
+                        type: integer
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - instancePath
+                            - schemaPath
+                            - keyword
+                            - params
+                            - message
+                          properties:
+                            instancePath:
+                              description: "'/body' JSON Pointer to the part of the request body that caused the error"
+                              type: string
+                            schemaPath:
+                              description: "'#/properties/body/required' JSON Schema path indicating the validation rule that failed"
+                              type: string
+                            keyword:
+                              description: "'required' Validation keyword that failed"
+                              type: string
+                            params:
+                              description: "Additional parameters about the validation failure"
+                              type: object
+                              required:
+                                -missingProperty
+                              properties:
+                                missingProperty:
+                                  type: string
+                            message:
+                              description: "'RequestType' Error message describing the validation failure field"
+                              type: string
+              examples:
+                badRequestExample:
+                  summary: Bad Request - Missing Required Property
+                  value:
+                    errorMessage:
+                      errorType: "Bad Request: Invalid Request Body"
+                      statusCode: 400
+                      errorDetails:
+                        - instancePath: "/body"
+                          schemaPath: "#/properties/body/required"
+                          keyword: "required"
+                          params:
+                            missingProperty: "RequestType"
+                          message: "must have required property 'RequestType'"
         "500":
-          description: "Internal Server Error - SOAP call failures, parsing errors."
+          description: Internal server error response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        description: "This Card Is Already Assigned To A Customer!"
+                        type: string
+                      statusCode:
+                        description: "500"
+                        type: integer
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - message
+                          properties:
+                            message:
+                              description: "This Card Is Already Assigned To A Customer!"
+                              type: string
+              examples:
+                internalServerErrorExample:
+                  summary: This Card Is Already Assigned To A Customer!
+                  value:
+                    errorMessage:
+                      errorType: "This Card Is Already Assigned To A Customer!"
+                      statusCode: "500"
+                      errorDetails:
+                        - message: "This Card Is Already Assigned To A Customer!"
+        "504":
+          description: Gateway Timeout error response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        type: string
+                        description: "Gateway Timeout"
+                      statusCode:
+                        type: integer
+                        description: "504"
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            message:
+                              description: "Task timed out after 2.02 seconds"
+                              type: string
+              examples:
+                gatewayTimeoutExample:
+                  summary: Gateway Timeout Example
+                  value:
+                    errorMessage:
+                      errorType: "Gateway Timeout"
+                      statusCode: 504
+                      errorDetails:
+                        - message: "Task timed out after 2.02 seconds"
+
+  /cards/tdsenrollement:
+    post:
+      summary: Change Ecom Status
+      description: Modify the Ecom Status
+      tags:
+        - Cards
+      requestBody:
+        description: Details for updating the TDS enrollment status of a card.
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - ECstatusEnable    
+              - CardRefNum      
+              properties:
+                CardRefNum:
+                  type: string
+                  description: The PAN of the card whose Ecom Status is being updated.
+                ECstatusEnable:
+                  type: integer
+                  description: Ecom Status (e.g., 1 for enrolled, 0 for not enrolled).
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message:
+                    type: string
+                    description: "Card Status changed successfully! (Active)"
+              examples:
+                successResponse:
+                  summary: Successful Request Example
+                  value:
+                    message: "Card Status changed successfully! (Active)"
+        "400":
+          description: Bad request response "Wrong Field in the body request"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage  # Making errorMessage required at the root level
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        description: "Bad Request: Invalid Request Body"
+                        type: string
+                      statusCode:
+                        description: "400"
+                        type: integer
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - instancePath
+                            - schemaPath
+                            - keyword
+                            - params
+                            - message
+                          properties:
+                            instancePath:
+                              description: "'/body' JSON Pointer to the part of the request body that caused the error"
+                              type: string
+                            schemaPath:
+                              description: "'#/properties/body/required' JSON Schema path indicating the validation rule that failed"
+                              type: string
+                            keyword:
+                              description: "'required' Validation keyword that failed"
+                              type: string
+                            params:
+                              description: "Additional parameters about the validation failure"
+                              type: object
+                              required:
+                                -missingProperty
+                              properties:
+                                missingProperty:
+                                  type: string
+                            message:
+                              description: "Error message describing the validation failure field"
+                              type: string
+              examples:
+                badRequestExample:
+                  summary: Bad Request - Missing Required Property
+                  value:
+                    errorMessage:
+                      errorType: "Bad Request: Invalid Request Body"
+                      statusCode: 400
+                      errorDetails:
+                        - instancePath: "/body"
+                          schemaPath: "#/properties/body/required"
+                          keyword: "required"
+                          params:
+                            missingProperty: "ECstatusEnable or CardRefNum"
+                          message: "must have required property"
+        "500":
+          description: Internal server error response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        description: "This Card is already in this status"
+                        type: string
+                      statusCode:
+                        description: "500"
+                        type: integer
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - message
+                          properties:
+                            message:
+                              description: "This Card is already in this status"
+                              type: string
+              examples:
+                internalServerErrorExample:
+                  summary: This Card is already in this status
+                  value:
+                    errorMessage:
+                      errorType: "This Card is already in this status"
+                      statusCode: "500"
+                      errorDetails:
+                        - message: "This Card is already in this status"
+        "504":
+          description: Gateway Timeout error response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        type: string
+                        description: "Gateway Timeout"
+                      statusCode:
+                        type: integer
+                        description: "504"
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            message:
+                              description: "Task timed out after 2.02 seconds"
+                              type: string
+              examples:
+                gatewayTimeoutExample:
+                  summary: Gateway Timeout Example
+                  value:
+                    errorMessage:
+                      errorType: "Gateway Timeout"
+                      statusCode: 504
+                      errorDetails:
+                        - message: "Task timed out after 2.02 seconds"
+
+  /cards/activate:
+    post:
+      summary: Activate Card
+      description: Activate a card by providing the CardStatus and CardRefNum.
+      tags:
+        - Cards
+      requestBody:
+        description: Details for activating a card.
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - CardStatus    
+              - CardRefNum    
+              properties:
+                CardStatus:
+                  type: string
+                  enum: [Active, Deactivated]
+                  description: The status of the card.
+                CardRefNum:
+                  type: string
+                  description: The CardRefNum of the card to be activated.
+
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message:
+                    type: string
+                    description: "Card Activated successfully!"
+              examples:
+                successResponse:
+                  summary: Successful Request Example
+                  value:
+                    message: "Card Activated successfully!"
+        "400":
+          description: Bad request response "Wrong Field in the body request"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage  # Making errorMessage required at the root level
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        description: "Bad Request: Invalid Request Body"
+                        type: string
+                      statusCode:
+                        description: "400"
+                        type: integer
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - instancePath
+                            - schemaPath
+                            - keyword
+                            - params
+                            - message
+                          properties:
+                            instancePath:
+                              description: "'/body' JSON Pointer to the part of the request body that caused the error"
+                              type: string
+                            schemaPath:
+                              description: "'#/properties/body/required' JSON Schema path indicating the validation rule that failed"
+                              type: string
+                            keyword:
+                              description: "'required' Validation keyword that failed"
+                              type: string
+                            params:
+                              description: "Additional parameters about the validation failure"
+                              type: object
+                              required:
+                                -missingProperty
+                              properties:
+                                missingProperty:
+                                  type: string
+                            message:
+                              description: "Error message describing the validation failure field"
+                              type: string
+              examples:
+                badRequestExample:
+                  summary: Bad Request - Missing Required Property
+                  value:
+                    errorMessage:
+                      errorType: "Bad Request: Invalid Request Body"
+                      statusCode: 400
+                      errorDetails:
+                        - instancePath: "/body"
+                          schemaPath: "#/properties/body/required"
+                          keyword: "required"
+                          params:
+                            missingProperty: "CardRefNum or CardStatus"
+                          message: "must have required property"
+        "500":
+          description: Internal server error response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        description: "This Card Is Already Activated"
+                        type: string
+                      statusCode:
+                        description: "500"
+                        type: integer
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - message
+                          properties:
+                            message:
+                              description: "This Card Is Already Activated"
+                              type: string
+              examples:
+                internalServerErrorExample:
+                  summary: This Card Is Already Activated
+                  value:
+                    errorMessage:
+                      errorType: "This Card Is Already Activated"
+                      statusCode: "500"
+                      errorDetails:
+                        - message: "This Card Is Already Activated"
+        "504":
+          description: Gateway Timeout error response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - errorMessage
+                properties:
+                  errorMessage:
+                    type: object
+                    required:
+                      - errorType
+                      - statusCode
+                      - errorDetails
+                    properties:
+                      errorType:
+                        type: string
+                        description: "Gateway Timeout"
+                      statusCode:
+                        type: integer
+                        description: "504"
+                      errorDetails:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            message:
+                              description: "Task timed out after 2.02 seconds"
+                              type: string
+              examples:
+                gatewayTimeoutExample:
+                  summary: Gateway Timeout Example
+                  value:
+                    errorMessage:
+                      errorType: "Gateway Timeout"
+                      statusCode: 504
+                      errorDetails:
+                        - message: "Task timed out after 2.02 seconds"
 
 components:
   schemas:
@@ -107,12 +642,12 @@ components:
           description: "Customer's account number"
         FirstName:
           type: string
-          description: "For new customers (`RequestType: NewAccountNewCustomer`) `Mandatory`"
+          description: " `Mandatory` For new customers (`RequestType: NewAccountNewCustomer`)"
         MiddleName:
           type: string
         LastName:
           type: string
-          description: "For new customers (`RequestType: NewAccountNewCustomer`) `Mandatory`"
+          description: " `Mandatory` For new customers (`RequestType: NewAccountNewCustomer`)"
         NationalId:
           type: string
           description : " `Mandatory` if Passport is not provided "
@@ -132,6 +667,17 @@ components:
           type: string
         Zip:
           type: string
-
-
-
+  parameters:
+    apiKey:
+      name: x-api-key
+      in: header
+      required: true
+      schema:
+        type: string
+    contentType:
+      name: Content-Type
+      in: header
+      required: true
+      schema:
+        type: string
+        default: application/json
