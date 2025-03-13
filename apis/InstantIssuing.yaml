@@ -6,9 +6,7 @@ info:
   version: "2025-02-16T14:26:47Z"
 
 servers:
-  # - url: "uat-api.enza.cloud/TX/v1"
-  - url: "https://uat-api.enza.cloud/TX/v1" 
-  
+  - url: "https://uat-api.enza.cloud/TX/v1"
 
 tags:
   - name: "Instant Issuing"
@@ -19,6 +17,7 @@ tags:
 paths:
   /instantissuing:
     post:
+      operationId: processGroupRequest
       summary: Instant Issuing Request
       description: |
         ## Overview
@@ -35,14 +34,11 @@ paths:
         - **For existing customers:** `"2-NewAccountExistingCustomer"`
 
         By correctly setting `RequestType` and including all required fields, you ensure that the API can create the account successfully without validation errors.
-      
+      tags:
+        - Instant Issuing
       parameters:
         - $ref: '#/components/parameters/apiKey'
         - $ref: '#/components/parameters/contentType'
-
-      tags:
-        - Instant Issuing
-      operationId: processGroupRequest
       requestBody:
         required: true
         content:
@@ -82,13 +78,13 @@ paths:
                   value:
                     message: "Request: 'NewAccountNewCustomer' Processed Successfully."
         "400":
-          description: Bad request response "Wrong Field in the body request"
+          description: 'Bad request response "Wrong Field in the body request"'
           content:
             application/json:
               schema:
                 type: object
                 required:
-                  - errorMessage  # Making errorMessage required at the root level
+                  - errorMessage
                 properties:
                   errorMessage:
                     type: object
@@ -115,24 +111,19 @@ paths:
                             - message
                           properties:
                             instancePath:
-                              description: "'/body' JSON Pointer to the part of the request body that caused the error"
                               type: string
                             schemaPath:
-                              description: "'#/properties/body/required' JSON Schema path indicating the validation rule that failed"
                               type: string
                             keyword:
-                              description: "'required' Validation keyword that failed"
                               type: string
                             params:
-                              description: "Additional parameters about the validation failure"
                               type: object
                               required:
-                                -missingProperty
+                                - missingProperty
                               properties:
                                 missingProperty:
                                   type: string
                             message:
-                              description: "'RequestType' Error message describing the validation failure field"
                               type: string
               examples:
                 badRequestExample:
@@ -178,7 +169,6 @@ paths:
                             - message
                           properties:
                             message:
-                              description: "This Card Is Already Assigned To A Customer!"
                               type: string
               examples:
                 internalServerErrorExample:
@@ -217,7 +207,6 @@ paths:
                           type: object
                           properties:
                             message:
-                              description: "Task timed out after 2.02 seconds"
                               type: string
               examples:
                 gatewayTimeoutExample:
@@ -231,26 +220,27 @@ paths:
 
   /cards/tdsenrollement:
     post:
-      summary: Change Ecom Status
-      description: Modify the Ecom Status
+      operationId: changeEcommerceStatus
+      summary: Change E-commerce Status Request
+      description: This request is used to modify the e-commerce status associated with card transactions by providing ECstatus and the card reference number.
       tags:
         - Cards
       requestBody:
-        description: Details for updating the TDS enrollment status of a card.
+        description: Details for updating ECstatus of a card.
         content:
           application/json:
             schema:
               type: object
               required:
-              - ECstatusEnable    
-              - CardRefNum      
+                - ECstatusEnable
+                - CardRefNum
               properties:
                 CardRefNum:
                   type: string
-                  description: The PAN of the card whose Ecom Status is being updated.
+                  description: Card Reference Number.
                 ECstatusEnable:
                   type: integer
-                  description: Ecom Status (e.g., 1 for enrolled, 0 for not enrolled).
+                  description: ECstatus ( "1" -> Enrolled, "0" -> Not enrolled).
       responses:
         "200":
           description: Successful response
@@ -276,7 +266,7 @@ paths:
               schema:
                 type: object
                 required:
-                  - errorMessage  # Making errorMessage required at the root level
+                  - errorMessage
                 properties:
                   errorMessage:
                     type: object
@@ -303,24 +293,19 @@ paths:
                             - message
                           properties:
                             instancePath:
-                              description: "'/body' JSON Pointer to the part of the request body that caused the error"
                               type: string
                             schemaPath:
-                              description: "'#/properties/body/required' JSON Schema path indicating the validation rule that failed"
                               type: string
                             keyword:
-                              description: "'required' Validation keyword that failed"
                               type: string
                             params:
-                              description: "Additional parameters about the validation failure"
                               type: object
                               required:
-                                -missingProperty
+                                - missingProperty
                               properties:
                                 missingProperty:
                                   type: string
                             message:
-                              description: "Error message describing the validation failure field"
                               type: string
               examples:
                 badRequestExample:
@@ -353,7 +338,7 @@ paths:
                       - errorDetails
                     properties:
                       errorType:
-                        description: "This Card is already in this status"
+                        description: "ReadToken Declined: Token not found "
                         type: string
                       statusCode:
                         description: "500"
@@ -366,17 +351,16 @@ paths:
                             - message
                           properties:
                             message:
-                              description: "This Card is already in this status"
                               type: string
               examples:
                 internalServerErrorExample:
-                  summary: This Card is already in this status
+                  summary: "ReadToken Declined: Token not found"
                   value:
                     errorMessage:
-                      errorType: "This Card is already in this status"
+                      errorType: "ReadToken Declined: Token not found"
                       statusCode: "500"
                       errorDetails:
-                        - message: "This Card is already in this status"
+                        - message: "ReadToken Declined: Token not found"
         "504":
           description: Gateway Timeout error response
           content:
@@ -405,7 +389,6 @@ paths:
                           type: object
                           properties:
                             message:
-                              description: "Task timed out after 2.02 seconds"
                               type: string
               examples:
                 gatewayTimeoutExample:
@@ -417,21 +400,22 @@ paths:
                       errorDetails:
                         - message: "Task timed out after 2.02 seconds"
 
-  /cards/activate:
+  /cards/cardstatus:
     post:
-      summary: Activate Card
-      description: Activate a card by providing the CardStatus and CardRefNum.
+      operationId: changeCardStatus
       tags:
         - Cards
+      summary: Change Card Status
+      description: Update the status of a card by providing the new status and the card reference number. This endpoint allows the modification of the card's current status to be "Active" or "Deactivated".
       requestBody:
-        description: Details for activating a card.
+        description: Request Details.
         content:
           application/json:
             schema:
               type: object
               required:
-              - CardStatus    
-              - CardRefNum    
+                - CardStatus
+                - CardRefNum
               properties:
                 CardStatus:
                   type: string
@@ -439,8 +423,7 @@ paths:
                   description: The status of the card.
                 CardRefNum:
                   type: string
-                  description: The CardRefNum of the card to be activated.
-
+                  description: Card Reference Number.
       responses:
         "200":
           description: Successful response
@@ -453,12 +436,12 @@ paths:
                 properties:
                   message:
                     type: string
-                    description: "Card Activated successfully!"
+                    description: "Card Status changed successfully!"
               examples:
                 successResponse:
                   summary: Successful Request Example
                   value:
-                    message: "Card Activated successfully!"
+                    message: "Card Status changed successfully!"
         "400":
           description: Bad request response "Wrong Field in the body request"
           content:
@@ -466,7 +449,7 @@ paths:
               schema:
                 type: object
                 required:
-                  - errorMessage  # Making errorMessage required at the root level
+                  - errorMessage
                 properties:
                   errorMessage:
                     type: object
@@ -493,24 +476,19 @@ paths:
                             - message
                           properties:
                             instancePath:
-                              description: "'/body' JSON Pointer to the part of the request body that caused the error"
                               type: string
                             schemaPath:
-                              description: "'#/properties/body/required' JSON Schema path indicating the validation rule that failed"
                               type: string
                             keyword:
-                              description: "'required' Validation keyword that failed"
                               type: string
                             params:
-                              description: "Additional parameters about the validation failure"
                               type: object
                               required:
-                                -missingProperty
+                                - missingProperty
                               properties:
                                 missingProperty:
                                   type: string
                             message:
-                              description: "Error message describing the validation failure field"
                               type: string
               examples:
                 badRequestExample:
@@ -543,7 +521,7 @@ paths:
                       - errorDetails
                     properties:
                       errorType:
-                        description: "This Card Is Already Activated"
+                        description: "CardDeclineReason: Token not found"
                         type: string
                       statusCode:
                         description: "500"
@@ -556,17 +534,16 @@ paths:
                             - message
                           properties:
                             message:
-                              description: "This Card Is Already Activated"
                               type: string
               examples:
                 internalServerErrorExample:
-                  summary: This Card Is Already Activated
+                  summary: "CardDeclineReason: Token not found"
                   value:
                     errorMessage:
-                      errorType: "This Card Is Already Activated"
+                      errorType: "CardDeclineReason: Token not found"
                       statusCode: "500"
                       errorDetails:
-                        - message: "This Card Is Already Activated"
+                        - message: "CardDeclineReason: Token not found"
         "504":
           description: Gateway Timeout error response
           content:
@@ -595,7 +572,6 @@ paths:
                           type: object
                           properties:
                             message:
-                              description: "Task timed out after 2.02 seconds"
                               type: string
               examples:
                 gatewayTimeoutExample:
@@ -606,7 +582,7 @@ paths:
                       statusCode: 504
                       errorDetails:
                         - message: "Task timed out after 2.02 seconds"
-
+                        
 components:
   schemas:
     Customer:
@@ -622,7 +598,7 @@ components:
         - LastName
       type: object
       properties:
-        RequestType: 
+        RequestType:
           type: string
           description: |
             - `1-NewAccountNewCustomer`: New customer (requires fields `FirstName`,`LastName`).
@@ -630,30 +606,30 @@ components:
         BranchName:
           type: string
           enum: [GTBR]
-          description: "Branch name `GTBR`"
+          description: "Branch name must be `GTBR`"
         CardRefNum:
           type: string
           description: "Card Reference Number"
         EmbossedName:
           type: string
           description: "Name to emboss on the card"
-        AccountNum: 
+        AccountNum:
           type: string
           description: "Customer's account number"
         FirstName:
           type: string
-          description: " `Mandatory` For new customers (`RequestType: NewAccountNewCustomer`)"
+          description: "`Mandatory` for new customers (`RequestType: NewAccountNewCustomer`)"
         MiddleName:
           type: string
         LastName:
           type: string
-          description: " `Mandatory` For new customers (`RequestType: NewAccountNewCustomer`)"
+          description: "`Mandatory` for new customers (`RequestType: NewAccountNewCustomer`)"
         NationalId:
           type: string
-          description : " `Mandatory` if Passport is not provided "
+          description: "`Mandatory` if Passport is not provided"
         Passport:
           type: string
-          description : " `Mandatory` if NationalId is not provided "
+          description: "`Mandatory` if NationalId is not provided"
         BirthDate:
           type: string
           format: date
