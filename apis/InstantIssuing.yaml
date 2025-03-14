@@ -17,7 +17,7 @@ tags:
 paths:
   /instantissuing:
     post:
-      operationId: processGroupRequest
+      operationId: Instant Issuing Request
       summary: Instant Issuing Request
       description: |
         ## Overview
@@ -225,6 +225,9 @@ paths:
       description: This request is used to modify the e-commerce status associated with card transactions by providing ECstatus and the card reference number.
       tags:
         - Cards
+      parameters:
+        - $ref: '#/components/parameters/apiKey'
+        - $ref: '#/components/parameters/contentType'
       requestBody:
         description: Details for updating ECstatus of a card.
         content:
@@ -239,7 +242,7 @@ paths:
                   type: string
                   description: Card Reference Number.
                 ECstatusEnable:
-                  type: integer
+                  type: string
                   description: ECstatus ( "1" -> Enrolled, "0" -> Not enrolled).
       responses:
         "200":
@@ -400,12 +403,17 @@ paths:
                       errorDetails:
                         - message: "Task timed out after 2.02 seconds"
 
+        
+
   /cards/cardstatus:
     post:
       operationId: changeCardStatus
       tags:
         - Cards
       summary: Change Card Status
+      parameters:
+        - $ref: '#/components/parameters/apiKey'
+        - $ref: '#/components/parameters/contentType'
       description: Update the status of a card by providing the new status and the card reference number. This endpoint allows the modification of the card's current status to be "Active" or "Deactivated".
       requestBody:
         description: Request Details.
