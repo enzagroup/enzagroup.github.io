@@ -1,44 +1,42 @@
-openapi: "3.0.1"
+openapi: 3.0.1
 info:
-  title: "Enza REST API Documentation"
+  title: Enza REST API Documentation
   description: |
     **Welcome to the Enza REST API Developer Portal. Our API provides seamless integration for instant issuing services across Africa. This portal offers all the necessary tools, detailed documentation, and API endpoints required to empower your financial operations with real-time card issuance capabilities. Explore the portal, integrate with ease, and unlock secure, efficient, and scalable instant issuing solutions.**
-  version: "2025-02-16T14:26:47Z"
+  version: 2025-02-16T14:26:47Z
 
 servers:
-  - url: "https://uat-api.enza.cloud/TX/v1"
+  - url: https://uat-api.enza.cloud/TX/v1
 
 tags:
-  - name: "Instant Issuing"
-    description: "Instant Issuing Operations"
-  - name: "Cards"
-    description: "Cards Operations"
+  - name: Instant Issuing
+    description: Instant Issuing Operations
+  - name: Cards
+    description: Cards Operations
 
 paths:
   /instantissuing:
     post:
-      operationId: Instant Issuing Request
+      operationId: instantIssuingRequest
       summary: Instant Issuing Request
       description: |
-        ## Overview
-        This API endpoint lets you link a pre-produced card to a customer's account. It works in two ways:
-        -  1- Create Account to a new Customer, and link the pre-produced card. 
-        -  2- Create Account to an existing customer, and link the pre-produced card. 
-        
-        You can use this endpoint for both new and existing customers, depending on your needs. Make sure to provide the correct card reference number and RequestType when making the request.
+        ## Overview  
+        This API endpoint lets you link a pre-produced card to a customer's account. It works in two ways:  
+        1. **New customer:** Create an account *and* link the card.  
+        2. **Existing customer:** Create a new account for an existing customer and link the card.  
 
-        ## `RequestType`
-        You **must** set the `RequestType` parameter correctly:
+        ## `RequestType`  
+        | Scenario                | Value                       |
+        |-------------------------|-----------------------------|
+        | New customer            | `NewAccountNewCustomer`     |
+        | Existing customer       | `NewAccountExistingCustomer`|
 
-        - **For new customers:**      `"1-NewAccountNewCustomer"`
-        - **For existing customers:** `"2-NewAccountExistingCustomer"`
-
-        By correctly setting `RequestType` and including all required fields, you ensure that the API can create the account successfully without validation errors.
       tags:
         - Instant Issuing
       parameters:
         - $ref: '#/components/parameters/apiKey'
         - $ref: '#/components/parameters/contentType'
+
       requestBody:
         required: true
         content:
@@ -46,19 +44,19 @@ paths:
             schema:
               $ref: '#/components/schemas/Customer'
             example:
-              RequestType: "NewAccountNewCustomer"
-              LastName: "EEE"
-              FirstName: "Cust02"
-              BirthDate: "1990-01-01"
+              RequestType: NewAccountNewCustomer
+              LastName: EEE
+              FirstName: Cust02
+              BirthDate: 1990-01-20
               Passport: "76238310075"
-              Email: "test@test.com"
-              MobilePhone: "9991234567"
-              StreetTitle: "Baker's Str"
-              Zip: "WC1X 9NX"
-              AccountNum: "AAABBB150573"
-              BranchName: "Main Branch"
-              CardRefNum: "000515"
-              EmbossedName: "Cust02 New"
+              Email: test@test.com
+              MobilePhone: '9991234567'
+              StreetTitle: Baker's Str
+              Zip: WC1X 9NX
+              AccountNum: AAABBB150573
+              CardRefNum: '000515'
+              EmbossedName: Cust02 New
+
       responses:
         '200':
           description: Successful response
@@ -70,64 +68,62 @@ paths:
                 directSuccess:
                   summary: Direct success example
                   value:
-                    message: "Request: 'NewAccountNewCustomer' Processed Successfully."
+                    code: SUCCESS_REQUEST_PROCESSED
+                    params:
+                      requestType: NewAccountNewCustomer
+
         '400':
-          description: Bad request – invalid request body
+          description: Bad request – validation failed
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/BadRequest'
               examples:
-                MissingLastName:
-                  summary: Missing LastName field
+                validationFailure:
+                  summary: Missing required field
                   value:
-                    errorMessage: "Bad Request: Invalid Request Body"
-                    params: "{missingProperty=LastName}"
-                    message: "must have required property 'LastName'"
+                    code: ERR_VALIDATION_FAILED
+                    params:
+                      missingProperty: RequestType
+
         '409':
-          description: Conflict – card already assigned
+          description: 'Conflict – card already assigned'
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - errorType
-                properties:
-                  errorType:
-                    type: string
-                    description: Error description
-                    example: "This Card Is Already Assigned To A Customer!"
+                $ref: '#/components/schemas/CardAlreadyAssigned'
               examples:
                 conflictError:
                   summary: Card already assigned example
                   value:
-                    errorType: "This Card Is Already Assigned To A Customer!"
+                    code: ERR_CARD_ALREADY_ASSIGNED
+                    params:
+                      message: This Card Is Already Assigned To A Customer!
+
         '504':
-          description: Gateway Timeout – task took too long
+          description: Gateway Timeout
           content:
             application/json:
               schema:
                 type: object
-                required:
-                  - errorMessage
+                required: [errorMessage]
                 properties:
                   errorMessage:
                     type: string
                     description: Timeout error message
-                    example: "Task timed out after 1.10 seconds"
+                    example: Task timed out after 1.10 seconds
               examples:
                 lambdaTimeout:
                   summary: Lambda execution timed out
                   value:
-                    errorMessage: "Task timed out after 1.10 seconds"
+                    errorMessage: Task timed out after 1.10 seconds
 
   /cards/tdsenrollement:
     post:
       operationId: changeEcommerceStatus
-      summary: Change E-commerce Status Request
-      description: This request is used to modify the e-commerce status associated with card transactions by providing ECstatus and the card reference number.
-      tags:
-        - Cards
+      summary: Change E-commerce Status
+      description: Modify the e-commerce status for a card by supplying `ECstatusEnable` and the card reference number.
+      tags: [Cards]
       parameters:
         - $ref: '#/components/parameters/apiKey'
         - $ref: '#/components/parameters/contentType'
@@ -137,113 +133,114 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - ECstatusEnable
-                - CardRefNum
+              required: [ECstatusEnable, CardRefNum]
               properties:
                 CardRefNum:
                   type: string
-                  description: Card Reference Number.
+                  description: Card reference number
                 ECstatusEnable:
                   type: string
-                  description: ECstatus ( "1" -> Enrolled, "0" -> Not enrolled).
+                  description: 'EC status: `"1"` = Enrolled, `"0"` = Not enrolled'
       responses:
-        "200":
+        '200':
           description: Successful response
           content:
             application/json:
               schema:
                 type: object
                 required:
-                  - message
+                  - code
+                  - params
                 properties:
-                  message:
+                  code:
                     type: string
-                    description: "Success! ECstatus is successfully changed!!(Enabled)!"
+                    example: SUCCESS_ECSTATUS_CHANGED
+                  params:
+                    type: object
+                    required:
+                      - status
+                    properties:
+                      status:
+                        type: string
+                        example: Enabled
               examples:
                 successResponse:
                   summary: Successful Request Example
                   value:
-                    message: "Success! ECstatus is successfully changed!!(Enabled)!"
-        "400":
-          description: Bad request response "Wrong Field in the body request"
+                    code: SUCCESS_ECSTATUS_CHANGED
+                    params:
+                      status: Enabled
+        '400':
+          description: 'Bad request – validation failed'
           content:
             application/json:
               schema:
                 type: object
                 required:
-                  - errorMessage
+                  - code
                   - params
-                  - message
                 properties:
-                  errorMessage:
+                  code:
                     type: string
-                    description: "Bad Request: Invalid Request Body"
+                    example: ERR_VALIDATION_FAILED
                   params:
-                    type: string
-                    description: "Details of which property was missing"
-                  message:
-                    type: string
-                    description: "Validation error message"
+                    type: object
+                    required:
+                      - missingProperty
+                    properties:
+                      missingProperty:
+                        type: string
+                        example: CardRefNum
               examples:
                 badRequestExample:
-                  summary: Bad Request – Missing Required Property
+                  summary: Missing required field
                   value:
-                    errorMessage: "Bad Request: Invalid Request Body"
-                    params: "{missingProperty=ECstatusEnable}" 
-                    message: "must have required property 'ECstatusEnable'"
-
-        "409":
-          description: Conflict response when token not found
+                    code: ERR_VALIDATION_FAILED
+                    params:
+                      missingProperty: CardRefNum
+        '409':
+          description: 'Conflict – token not found'
           content:
             application/json:
               schema:
                 type: object
                 required:
-                  - errorType
+                  - code
+                  - params
                 properties:
-                  errorType:
+                  code:
                     type: string
-                    description: "ReadToken Declined: Token not found"
+                    example: ERR_READTOKEN_DECLINED
+                  params:
+                    type: object
+                    required:
+                      - missingProperty
+                    properties:
+                      missingProperty:
+                        type: string
+                        example: Token not found
               examples:
                 conflictExample:
-                  summary: ReadToken Declined – Token not found
+                  summary: Token not found
                   value:
-                    errorType: "ReadToken Declined: Token not found"
-
+                    code: ERR_READTOKEN_DECLINED
+                    params:
+                      missingProperty: Token not found
         '504':
-          description: Gateway Timeout – task took too long
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - errorMessage
-                properties:
-                  errorMessage:
-                    type: string
-                    description: Timeout error message
-                    example: "Task timed out after 1.10 seconds"
-              examples:
-                lambdaTimeout:
-                  summary: Lambda execution timed out
-                  value:
-                    errorMessage: "Task timed out after 1.10 seconds"
-
-        
+          $ref: '#/components/responses/LambdaTimeout'
 
   /cards/cardstatus:
     post:
       operationId: changeCardStatus
-      tags:
-        - Cards
+      tags: [Cards]
       summary: Change Card Status
+      description: 'Change a card’s status to **Active** or **Deactivated**.'
       parameters:
         - $ref: '#/components/parameters/apiKey'
         - $ref: '#/components/parameters/contentType'
-      description: Update the status of a card by providing the new status and the card reference number. This endpoint allows the modification of the card's current status to be "Active" or "Deactivated".
+
       requestBody:
-        description: Request Details.
+        required: true
         content:
           application/json:
             schema:
@@ -254,178 +251,202 @@ paths:
               properties:
                 CardStatus:
                   type: string
-                  enum: [Active, Deactivated]
-                  description: The status of the card.
+                  description: Allowed values ⇒ **Active** | **Deactivated**
+                  enum: [Active, Deactivated]   # ← this drives the drop-down
+                  example: Active
                 CardRefNum:
                   type: string
-                  description: Card Reference Number.
+                  description: Unique card reference number.
       responses:
-        "200":
+        '200':
           description: Successful response
           content:
             application/json:
               schema:
-                type: string
+                type: object
+                required:
+                  - code
+                  - params
+                properties:
+                  code:
+                    type: string
+                    example: SUCCESS_CARDSTATUS_CHANGED
+                  params:
+                    type: object
+                    required:
+                      - status
+                    properties:
+                      status:
+                        type: string
+                        example: Active
               examples:
                 successResponse:
-                  summary: Raw string envelope
-                  value: "{message: Success! ECstatus is successfully changed!!(Active)!}"
-        "400":
-          description: Bad request response "Wrong Field in the body request"
+                  summary: Successful card-status change
+                  value:
+                    code: SUCCESS_CARDSTATUS_CHANGED
+                    params:
+                      status: Active
+        '400':
+          description: 'Bad request – validation failed'
           content:
             application/json:
               schema:
                 type: object
                 required:
-                  - errorMessage
+                  - code
                   - params
-                  - message
                 properties:
-                  errorMessage:
+                  code:
                     type: string
-                    description: "Bad Request: Invalid Request Body"
+                    example: ERR_VALIDATION_FAILED
                   params:
-                    type: string
-                    description: "Raw AJV params payload"
-                    example: "{missingProperty=CardRefNum}"
-                  message:
-                    type: string
-                    description: "Validation failure message"
-                    example: "must have required property 'CardRefNum'"
+                    type: object
+                    required:
+                      - missingProperty
+                    properties:
+                      missingProperty:
+                        type: string
+                        example: CardRefNum
               examples:
                 badRequestExample:
-                  summary: Bad Request – Missing Required Property
+                  summary: Missing required field
                   value:
-                    errorMessage: "Bad Request: Invalid Request Body"
-                    params: "{missingProperty=CardRefNum}"
-                    message: "must have required property 'CardRefNum'"
-
-        "409":
-          description: Conflict – Card declined
+                    code: ERR_VALIDATION_FAILED
+                    params:
+                      missingProperty: CardRefNum
+        '409':
+          description: 'Conflict – card declined'
           content:
             application/json:
               schema:
                 type: object
                 required:
-                  - errorType
+                  - code
+                  - params
                 properties:
-                  errorType:
+                  code:
                     type: string
-                    description: "CardDeclineReason: Token not found"
+                    example: ERR_CARD_DECLINED
+                  params:
+                    type: object
+                    required:
+                      - reason
+                    properties:
+                      reason:
+                        type: string
+                        example: Token not found
               examples:
                 conflictExample:
-                  summary: "CardDeclineReason: Token not found"
+                  summary: 'Card declined – token not found'
                   value:
-                    errorType: "CardDeclineReason: Token not found"
+                    code: ERR_CARD_DECLINED
+                    params:
+                      reason: Token not found
         '504':
-          description: Gateway Timeout – task took too long
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - errorMessage
-                properties:
-                  errorMessage:
-                    type: string
-                    description: Timeout error message
-                    example: "Task timed out after 1.10 seconds"
-              examples:
-                lambdaTimeout:
-                  summary: Lambda execution timed out
-                  value:
-                    errorMessage: "Task timed out after 1.10 seconds"
-                        
+          $ref: '#/components/responses/LambdaTimeout'
+
 components:
+  responses:
+    LambdaTimeout:
+      description: 'Gateway Timeout – task took too long'
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [errorMessage]
+            properties:
+              errorMessage:
+                type: string
+                example: Task timed out after 1.10 seconds
+          examples:
+            lambdaTimeout:
+              summary: Lambda execution timed out
+              value:
+                errorMessage: Task timed out after 1.10 seconds
+
   schemas:
     SuccessEnvelope:
       type: object
-      required:
-        - message
+      required: [code, params]
       properties:
-        message:
+        code:
           type: string
-          description: Human-readable status message
-          example: "Request: 'NewAccountNewCustomer' Processed Successfully."
+          example: SUCCESS_REQUEST_PROCESSED
+        params:
+          type: object
+          required: [requestType]
+          properties:
+            requestType:
+              type: string
+              example: NewAccountNewCustomer
 
     BadRequest:
       type: object
-      required:
-        - errorMessage
-        - params
-        - message
+      required: [code, params]
       properties:
-        errorMessage:
+        code:
           type: string
-          description: Brief description of the error
-          example: "Bad Request: Invalid Request Body"
+          example: ERR_VALIDATION_FAILED
         params:
-          type: string
-          description: Parameter details (e.g. which property is missing)
-          example: "{missingProperty=LastName}"
-        message:
-          type: string
-          description: Detailed validation message
-          example: "must have required property 'LastName'"
-          
-    Customer:
-      required:
-        - RequestType
-        - AccountNum
-        - BranchName
-        - CardRefNum
-        - EmbossedName
-        - NationalId
-        - Passport
-        - FirstName
-        - LastName
+          type: object
+          required: [missingProperty]
+          properties:
+            missingProperty:
+              type: string
+              example: RequestType
+
+    CardAlreadyAssigned:
       type: object
+      required: [code, params]
+      properties:
+        code:
+          type: string
+          example: ERR_CARD_ALREADY_ASSIGNED
+        params:
+          type: object
+          required: [message]
+          properties:
+            message:
+              type: string
+              example: This Card Is Already Assigned To A Customer!
+
+    Customer:
+      type: object
+      required:
+        [RequestType, AccountNum, CardRefNum, EmbossedName,NationalId, Passport, FirstName, LastName]
       properties:
         RequestType:
           type: string
           description: |
-            - `1-NewAccountNewCustomer`: New customer (requires fields `FirstName`,`LastName`).
-            - `2-NewAccountExistingCustomer`: Existing customer.
-        BranchName:
-          type: string
-          enum: [GTBR]
-          description: "Branch name must be `GTBR`"
-        CardRefNum:
-          type: string
-          description: "Card Reference Number"
-        EmbossedName:
-          type: string
-          description: "Name to emboss on the card"
-        AccountNum:
-          type: string
-          description: "Customer's account number"
+            - `NewAccountNewCustomer`: New customer  
+            - `NewAccountExistingCustomer`: Existing customer
+        CardRefNum:   { type: string }
+        EmbossedName: { type: string }
+        AccountNum:   { type: string }
         FirstName:
           type: string
-          description: "`Mandatory` for new customers (`RequestType: NewAccountNewCustomer`)"
-        MiddleName:
-          type: string
+          description: Mandatory for new customers
+        MiddleName:   { type: string }
         LastName:
           type: string
-          description: "`Mandatory` for new customers (`RequestType: NewAccountNewCustomer`)"
+          description: Mandatory for new customers
         NationalId:
           type: string
-          description: "`Mandatory` if Passport is not provided"
+          description: Mandatory if Passport is not provided
         Passport:
           type: string
-          description: "`Mandatory` if NationalId is not provided"
+          description: Mandatory if NationalId is not provided
         BirthDate:
           type: string
-          format: date
-          example: "1990-01-01"
-        Email:
-          type: string
-          format: email
-        MobilePhone:
-          type: string
-        StreetTitle:
-          type: string
-        Zip:
-          type: string
+          format: date          
+          pattern: '^\d{4}-\d{2}-\d{2}$'   # enforces YYYY-MM-DD
+          description: Date of birth in YYYY-MM-DD format
+          example: '1990-01-01'       
+        Email:       { type: string, format: email }
+        MobilePhone: { type: string }
+        StreetTitle: { type: string }
+        Zip:         { type: string }
+
   parameters:
     apiKey:
       name: x-api-key
